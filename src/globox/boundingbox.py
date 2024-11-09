@@ -10,6 +10,12 @@ The four raw coordinates of a `BoundingBox` with no assigned format. The coordin
 0 and 2 must be on the X-axis (horizontal) and the ones at indices 1 and 3 must be on 
 the Y-axis (vertical).
 """
+Polygons = list[list[float]]
+"""
+Polygons describe the exact shape of an object within a bounding box. As an object could consist of multiple 
+areas one object can be described by multiple polygons. A polygon is a list of 2D points. The points are
+encoded using absolute coordinates as follows: [x1, y1, x2, y2, ..., xN, yN]
+"""
 
 
 class BoxFormat(Enum):
@@ -68,7 +74,7 @@ class BoundingBox:
     ```
     """
 
-    __slots__ = ("label", "_xmin", "_ymin", "_xmax", "_ymax", "_confidence")
+    __slots__ = ("label", "_xmin", "_ymin", "_xmax", "_ymax", "_polygons", "_confidence")
 
     def __init__(
         self,
@@ -78,6 +84,7 @@ class BoundingBox:
         ymin: float,
         xmax: float,
         ymax: float,
+        polygons: Optional[Polygons] = None,
         confidence: Optional[float] = None,
     ) -> None:
         """
@@ -89,6 +96,11 @@ class BoundingBox:
         assert xmin <= xmax, "`xmax` must be greater than `xmin`."
         assert ymin <= ymax, "`ymax` must be greater than `ymin`."
 
+        for polygon in polygons:
+            assert type(polygons) == list, "Polygons must be of type list"
+            assert len(polygon) > 0, "Polygons must contain at least one point"
+            assert len(polygon) % 2 == 0, f"Polygons must consist of an even number of coordinates, but had {len(polygon)} coordinates"
+
         if confidence is not None:
             assert (
                 0.0 <= confidence <= 1.0
@@ -99,6 +111,7 @@ class BoundingBox:
         self._ymin = ymin
         self._xmax = xmax
         self._ymax = ymax
+        self._polygons = polygons
         self._confidence = confidence
 
     @property
@@ -161,6 +174,11 @@ class BoundingBox:
     def area(self) -> float:
         """The area of the bounding box in pixels."""
         return self.width * self.height
+
+    @property
+    def polygons(self) -> Polygons:
+        """Polygons within bounding box"""
+        return self._polygons
 
     def _area_in(self, range_: "tuple[float, float]") -> bool:
         """Returns `True` if the bounding box area is in a given range."""
@@ -291,6 +309,7 @@ class BoundingBox:
         *,
         label: str,
         coords: Coordinates,
+        polygons: Polygons = [], 
         confidence: Optional[float] = None,
         box_format=BoxFormat.LTRB,
         relative=False,
@@ -325,6 +344,7 @@ class BoundingBox:
             ymin=ymin,
             xmax=xmax,
             ymax=ymax,
+            polygons=polygons,
             confidence=confidence,
         )
 
@@ -639,11 +659,12 @@ class BoundingBox:
             and self.ymin == other.ymin
             and self.xmax == other.xmax
             and self.ymax == other.ymax
+            and self.polygons == other.polygons
             and self.confidence == other.confidence
         )
 
     def __repr__(self) -> str:
         return (
             f"BoundingBox(label: {self.label}, xmin: {self._xmin}, ymin: {self._ymin}, "
-            f"xmax: {self._xmax}, ymax: {self._ymax}, confidence: {self._confidence})"
+            f"xmax: {self._xmax}, ymax: {self._ymax}, polygons: {self._polygons}, confidence: {self._confidence})"
         )

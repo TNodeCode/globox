@@ -809,7 +809,7 @@ class AnnotationSet:
                     "image_id": imageid_to_id[annotation.image_id],
                     "bbox": box.ltwh,
                     "area": box.area,
-                    "segmentation": [],
+                    "segmentation": box.polygons,
                     "category_id": label_to_id[box.label],
                     "id": ann_id_count,
                 }
